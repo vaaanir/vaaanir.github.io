@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Architects – Higher or Lower</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap');
+
+    :root {
+      --red: #c8102e;
+      --red-bright: #e8192e;
+      --green: #1ed760;
+      --bg: #080808;
+      --card-bg: #111113;
+      --card-border: #1e1e22;
+      --text-muted: #555;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+
+    /* Subtle noise overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    /* ---- HEADER ---- */
+    header {
+      width: 100%;
+      background: rgba(10,10,12,0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid #1a1a1f;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .header-left { display: flex; flex-direction: column; gap: 2px; }
+
+    header h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.7rem;
+      letter-spacing: 4px;
+      color: #fff;
+      line-height: 1;
+    }
+    header h1 span { color: var(--red); }
+    .header-sub {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: var(--text-muted);
+    }
+
+    .header-right { display: flex; gap: 12px; align-items: center; }
+
+    .stat-chip {
+      background: #0f0f12;
+      border: 1px solid #1e1e24;
+      border-radius: 10px;
+      padding: 8px 16px;
+      text-align: center;
+      min-width: 72px;
+    }
+    .stat-chip .stat-val {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.6rem;
+      line-height: 1;
+      color: #fff;
+      display: block;
+    }
+    .stat-chip .stat-lbl {
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      display: block;
+      margin-top: 2px;
+    }
+    .stat-chip.best-chip .stat-val { color: #f5a623; }
+
+    /* ---- PROGRESS STRIP ---- */
+    .progress-strip {
+      width: 100%;
+      padding: 10px 20px 4px;
+      max-width: 920px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .progress-bar {
+      flex: 1;
+      height: 3px;
+      background: #1a1a1f;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--red), #ff6b35);
+      width: 0%;
+      transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+      border-radius: 3px;
+    }
+    .progress-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+    .streak-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #f5a623;
+      letter-spacing: 1px;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .streak-badge.show { opacity: 1; }
+
+    /* ---- GAME AREA ---- */
+    .game-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      width: 100%;
+      max-width: 920px;
+      padding: 20px 16px 30px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cards-row {
+      display: flex;
+      width: 100%;
+      gap: 0;
+      position: relative;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.6), 0 0 0 1px #1e1e22;
+    }
+
+    /* Album color bar — injected via JS */
+    .card {
+      flex: 1;
+      background: var(--card-bg);
+      padding: 44px 32px 36px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      min-height: 340px;
+      position: relative;
+      overflow: hidden;
+      transition: background 0.3s ease;
+    }
+
+    /* Top accent bar */
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--accent, var(--red));
+      transition: background 0.4s ease;
+    }
+
+    /* Subtle gradient glow in background */
+    .card::after {
+      content: '';
+      position: absolute;
+      top: -60px; left: 50%;
+      transform: translateX(-50%);
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, var(--accent, var(--red)) 0%, transparent 70%);
+      opacity: 0.06;
+      pointer-events: none;
+      transition: opacity 0.4s ease, background 0.4s ease;
+    }
+
+    .card.left { border-right: 1px solid #0a0a0c; }
+    .card.right { border-left: 1px solid #1a1a1e; }
+
+    .card.reveal-correct { background: #0a1a0f; }
+    .card.reveal-correct::before { background: var(--green); }
+    .card.reveal-correct::after { background: radial-gradient(circle, #1ed760 0%, transparent 70%); opacity: 0.1; }
+
+    .card.reveal-wrong { background: #180810; }
+    .card.reveal-wrong::before { background: var(--red-bright); }
+    .card.reveal-wrong::after { background: radial-gradient(circle, var(--red-bright) 0%, transparent 70%); opacity: 0.12; }
+
+    /* VS badge */
+    .vs-badge {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      background: var(--bg);
+      border: 2px solid #2a2a30;
+      border-radius: 50%;
+      width: 56px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.2rem;
+      color: #444;
+      letter-spacing: 1px;
+      box-shadow: 0 0 0 6px var(--bg);
+    }
+
+    .album-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--accent, #888);
+      margin-bottom: 14px;
+      transition: color 0.4s, border-color 0.4s;
+    }
+
+    .album-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--accent, #888);
+      flex-shrink: 0;
+    }
+
+    .song-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.6rem;
+      line-height: 1.05;
+      letter-spacing: 2px;
+      margin-bottom: 20px;
+      color: #fff;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.5);
+    }
+
+    .streams-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .streams-display {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--green);
+      letter-spacing: -0.5px;
+      line-height: 1;
+    }
+
+    .streams-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: var(--text-muted);
+    }
+
+    .question-mark {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 5rem;
+      color: #222228;
+      line-height: 1;
+      animation: pulse-q 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-q {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.05); }
+    }
+
+    /* ---- BUTTONS ---- */
+    .buttons-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 16px 24px;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0);
+      transition: background 0.15s;
+    }
+    .btn:not(:disabled):hover::after { background: rgba(255,255,255,0.08); }
+    .btn:not(:disabled):active { transform: scale(0.97); }
+
+    .btn-higher {
+      background: linear-gradient(135deg, #1ed760 0%, #17b84d 100%);
+      color: #000;
+      box-shadow: 0 4px 20px rgba(30,215,96,0.25);
+    }
+    .btn-higher:not(:disabled):hover { box-shadow: 0 6px 28px rgba(30,215,96,0.4); transform: translateY(-2px); }
+
+    .btn-lower {
+      background: linear-gradient(135deg, #e8192e 0%, #a50d26 100%);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(200,16,46,0.25);
+    }
+    .btn-lower:not(:disabled):hover { box-shadow: 0 6px 28px rgba(200,16,46,0.4); transform: translateY(-2px); }
+
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+    .btn-icon { font-size: 1.1rem; }
+
+    /* ---- RESULT TOAST ---- */
+    .result-toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #18181c;
+      border: 1px solid #2a2a30;
+      border-radius: 14px;
+      padding: 16px 28px;
+      text-align: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      min-width: 260px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+    }
+    .result-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .result-toast .toast-icon { font-size: 1.8rem; margin-bottom: 6px; display: block; }
+    .result-toast h3 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.8rem;
+      letter-spacing: 3px;
+    }
+    .result-toast.correct h3 { color: var(--green); }
+    .result-toast.wrong h3 { color: var(--red-bright); }
+    .result-toast .toast-desc {
+      font-size: 0.8rem;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    /* ---- NEW BEST BADGE ---- */
+    .new-best-badge {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%) scale(0.8);
+      background: linear-gradient(135deg, #f5a623, #e8832a);
+      color: #000;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.1rem;
+      letter-spacing: 3px;
+      padding: 8px 20px;
+      border-radius: 30px;
+      z-index: 150;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 4px 20px rgba(245,166,35,0.4);
+    }
+    .new-best-badge.show {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+    }
+
+    /* ---- GAME OVER ---- */
+    .game-over-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(5,5,8,0.96);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      text-align: center;
+      padding: 24px;
+    }
+    .game-over-overlay.show { display: flex; }
+
+    .game-over-card {
+      background: #0f0f13;
+      border: 1px solid #22222a;
+      border-radius: 24px;
+      padding: 48px 56px;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.8);
+      animation: pop-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+
+    @keyframes pop-in {
+      from { opacity: 0; transform: scale(0.85); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .go-header {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 3.2rem;
+      letter-spacing: 5px;
+      color: var(--red-bright);
+      margin-bottom: 4px;
+    }
+    .go-header.win { color: var(--green); }
+
+    .go-score-wrap { margin: 20px 0 8px; }
+    .go-score-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 3px; color: var(--text-muted); }
+    .go-score {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 7rem;
+      color: #fff;
+      line-height: 1;
+      margin: 4px 0;
+    }
+
+    .go-new-best {
+      display: inline-block;
+      background: linear-gradient(135deg, #f5a623, #e8832a);
+      color: #000;
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+      opacity: 0;
+      transform: scale(0.8);
+      transition: all 0.3s 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .go-new-best.show { opacity: 1; transform: scale(1); }
+
+    .go-stats {
+      display: flex;
+      gap: 0;
+      border: 1px solid #1e1e24;
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 16px 0 24px;
+    }
+    .go-stat {
+      flex: 1;
+      padding: 12px 8px;
+      border-right: 1px solid #1e1e24;
+    }
+    .go-stat:last-child { border-right: none; }
+    .go-stat-val {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.8rem;
+      color: #fff;
+      display: block;
+    }
+    .go-stat-lbl {
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+    }
+
+    .go-rank {
+      font-size: 0.9rem;
+      color: #888;
+      margin-bottom: 28px;
+    }
+    .go-rank strong { color: #fff; }
+
+    .btn-restart {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--red-bright) 0%, #a50d26 100%);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 4px 20px rgba(200,16,46,0.3);
+    }
+    .btn-restart:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(200,16,46,0.45); }
+    .btn-restart:active { transform: scale(0.98); }
+
+    /* ---- CARD SLIDE ANIMATION ---- */
+    @keyframes slide-in-right {
+      from { opacity: 0; transform: translateX(30px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .card.animate-in { animation: slide-in-right 0.3s cubic-bezier(0.4,0,0.2,1) both; }
+
+    /* ---- CONFETTI CANVAS ---- */
+    #confetti-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 199;
+      display: none;
+    }
+
+    @media (max-width: 600px) {
+      .song-title { font-size: 1.8rem; }
+      .streams-display { font-size: 2rem; }
+      .card { padding: 30px 18px 26px; min-height: 270px; }
+      .btn { padding: 14px 16px; font-size: 0.8rem; }
+      .game-over-card { padding: 36px 28px; }
+      .go-score { font-size: 5rem; }
+      .header-right { gap: 8px; }
+      .stat-chip { padding: 6px 10px; min-width: 58px; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="confetti-canvas"></canvas>
+
+<header>
+  <div class="header-left">
+    <h1>ARCHITECTS <span>/</span> HIGHER OR LOWER</h1>
+    <div class="header-sub">Spotify Streams</div>
+  </div>
+  <div class="header-right">
+    <div class="stat-chip">
+      <span class="stat-val" id="scoreDisplay">0</span>
+      <span class="stat-lbl">Score</span>
+    </div>
+    <div class="stat-chip best-chip">
+      <span class="stat-val" id="bestDisplay">0</span>
+      <span class="stat-lbl">Best</span>
+    </div>
+  </div>
+</header>
+
+<div class="progress-strip">
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  <span class="progress-label" id="progressLabel">1 / 88</span>
+  <span class="streak-badge" id="streakBadge">🔥 0</span>
+</div>
+
+<div class="game-wrap">
+  <div class="cards-row" id="cardsRow">
+    <div class="card left" id="cardLeft">
+      <div class="album-pill" id="leftAlbumPill"><span class="album-dot" id="leftDot"></span><span id="leftAlbum"></span></div>
+      <div class="song-title" id="leftSong"></div>
+      <div class="streams-wrap">
+        <div class="streams-display" id="leftStreams"></div>
+        <div class="streams-label">Spotify streams</div>
+      </div>
+    </div>
+
+    <div class="vs-badge">VS</div>
+
+    <div class="card right" id="cardRight">
+      <div class="album-pill" id="rightAlbumPill"><span class="album-dot" id="rightDot"></span><span id="rightAlbum"></span></div>
+      <div class="song-title" id="rightSong"></div>
+      <div class="question-mark" id="rightQuestion">?</div>
+      <div class="streams-wrap" id="rightStreamsWrap" style="display:none">
+        <div class="streams-display" id="rightStreams"></div>
+        <div class="streams-label">Spotify streams</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="buttons-row">
+    <button class="btn btn-higher" id="btnHigher" onclick="guess('higher')">
+      <span class="btn-icon">▲</span> Higher
+    </button>
+    <button class="btn btn-lower" id="btnLower" onclick="guess('lower')">
+      <span class="btn-icon">▼</span> Lower
+    </button>
+  </div>
+</div>
+
+<!-- Result toast -->
+<div class="result-toast" id="resultToast">
+  <span class="toast-icon" id="toastIcon"></span>
+  <h3 id="toastTitle"></h3>
+  <div class="toast-desc" id="toastDesc"></div>
+</div>
+
+<!-- New best badge -->
+<div class="new-best-badge" id="newBestBadge">⭐ NEW BEST SCORE!</div>
+
+<!-- Game over -->
+<div class="game-over-overlay" id="gameOverlay">
+  <div class="game-over-card">
+    <div class="go-header" id="goHeader">GAME OVER</div>
+    <div class="go-score-wrap">
+      <div class="go-score-label">Final Score</div>
+      <div class="go-score" id="finalScore">0</div>
+    </div>
+    <div class="go-new-best" id="goNewBest">⭐ New Best Score!</div>
+    <div class="go-stats">
+      <div class="go-stat">
+        <span class="go-stat-val" id="goStreak">0</span>
+        <span class="go-stat-lbl">Best Streak</span>
+      </div>
+      <div class="go-stat">
+        <span class="go-stat-val" id="goAllTime">0</span>
+        <span class="go-stat-lbl">All-Time Best</span>
+      </div>
+    </div>
+    <div class="go-rank" id="goRank"></div>
+    <button class="btn-restart" onclick="restartGame()">↺ &nbsp; Play Again</button>
+  </div>
+</div>
+
+<script>
+  // ---- ALBUM COLOR MAP ----
+  const albumColors = {
+    'Nightmares':                                   '#5c5c5c',
+    'Ruin':                                         '#8b7355',
+    'Hollow Crown':                                 '#9b59b6',
+    'The Here and Now':                             '#3498db',
+    'Daybreaker':                                   '#e8832a',
+    'Lost Forever // Lost Together':                '#2ecc9a',
+    'All Our Gods Have Abandoned Us':               '#c8102e',
+    'Holy Hell':                                    '#e63946',
+    'For Those That Wish to Exist':                 '#4a90d9',
+    'The Classic Symptoms of a Broken Spirit':      '#a855f7',
+    'The Sky, the Earth & All Between':             '#06d6a0',
+  };
+
+  function albumColor(album) {
+    return albumColors[album] || '#888';
+  }
+
+  // ---- SONG DATA ---- (147 songs, all matched to correct albums)
+  const songs = [
+    { title: 'Animals', album: 'For Those That Wish to Exist', year: 2021, streams: 158429382 },
+    { title: 'Doomsday', album: 'For Those That Wish to Exist', year: 2021, streams: 90869240 },
+    { title: 'Seeing Red', album: 'The Sky, the Earth & All Between', year: 2025, streams: 56787050 },
+    { title: 'Hereafter', album: 'Holy Hell', year: 2018, streams: 49823416 },
+    { title: 'when we were young', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 45310549 },
+    { title: 'Black Lungs', album: 'For Those That Wish to Exist', year: 2021, streams: 40749006 },
+    { title: 'Curse', album: 'The Sky, the Earth & All Between', year: 2025, streams: 39578274 },
+    { title: 'Blackhole', album: 'The Sky, the Earth & All Between', year: 2025, streams: 36517031 },
+    { title: 'A Match Made in Heaven', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 33782648 },
+    { title: 'Royal Beggars', album: 'Holy Hell', year: 2018, streams: 32823974 },
+    { title: 'Dead Butterflies', album: 'For Those That Wish to Exist', year: 2021, streams: 30285352 },
+    { title: 'Gone with the Wind', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 29623318 },
+    { title: 'Meteor', album: 'For Those That Wish to Exist', year: 2021, streams: 26685083 },
+    { title: 'Whiplash', album: 'The Sky, the Earth & All Between', year: 2025, streams: 25171745 },
+    { title: 'deep fake', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 23990945 },
+    { title: 'Impermanence', album: 'For Those That Wish to Exist', year: 2021, streams: 23287818 },
+    { title: 'Everything Ends', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 22906345 },
+    { title: 'Gravedigger', album: 'Lost Forever // Lost Together', year: 2014, streams: 22151146 },
+    { title: 'Nihilist', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 20491787 },
+    { title: 'Holy Hell', album: 'Holy Hell', year: 2018, streams: 19485207 },
+    { title: 'Giving Blood', album: 'For Those That Wish to Exist', year: 2021, streams: 16685373 },
+    { title: 'Gravity', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 16569270 },
+    { title: 'Modern Misery', album: 'Holy Hell', year: 2018, streams: 16199349 },
+    { title: 'These Colours Don\'t Run', album: 'Lost Forever // Lost Together', year: 2014, streams: 16063636 },
+    { title: 'tear gas', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 15677741 },
+    { title: 'Naysayer', album: 'Lost Forever // Lost Together', year: 2014, streams: 15031300 },
+    { title: 'Broken Cross', album: 'Lost Forever // Lost Together', year: 2014, streams: 14367586 },
+    { title: 'a new moral low ground', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 14017279 },
+    { title: 'Mortal After All', album: 'Holy Hell', year: 2018, streams: 13447035 },
+    { title: 'Little Wonder', album: 'For Those That Wish to Exist', year: 2021, streams: 12989101 },
+    { title: 'Deathwish', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 12619066 },
+    { title: 'Elegy', album: 'Holy Hell', year: 2018, streams: 11450283 },
+    { title: 'Downfall', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 11361291 },
+    { title: 'Discourse Is Dead', album: 'For Those That Wish to Exist', year: 2021, streams: 10614802 },
+    { title: 'An Ordinary Extinction', album: 'For Those That Wish to Exist', year: 2021, streams: 10608480 },
+    { title: 'Doomsday - Piano Reprise', album: 'For Those That Wish to Exist', year: 2021, streams: 10579808 },
+    { title: 'A Wasted Hymn', album: 'Holy Hell', year: 2018, streams: 10083519 },
+    { title: 'Phantom Fear', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 10081768 },
+    { title: 'Brain Dead', album: 'For Those That Wish to Exist', year: 2021, streams: 9593142 },
+    { title: 'Broken Mirror', album: 'Holy Hell', year: 2018, streams: 9374724 },
+    { title: 'Damnation', album: 'Holy Hell', year: 2018, streams: 9313237 },
+    { title: 'The Seventh Circle', album: 'Holy Hell', year: 2018, streams: 9290289 },
+    { title: 'Memento Mori', album: 'For Those That Wish to Exist', year: 2021, streams: 9070085 },
+    { title: 'burn down my house', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 8588879 },
+    { title: 'Dying To Heal', album: 'For Those That Wish to Exist', year: 2021, streams: 8492333 },
+    { title: 'The Empty Hourglass', album: 'Holy Hell', year: 2018, streams: 8314564 },
+    { title: 'C.A.N.C.E.R', album: 'Lost Forever // Lost Together', year: 2014, streams: 7655089 },
+    { title: 'All Love Is Lost', album: 'Lost Forever // Lost Together', year: 2014, streams: 7450626 },
+    { title: 'Alpha Omega', album: 'Daybreaker', year: 2012, streams: 7303478 },
+    { title: 'Libertine', album: 'For Those That Wish to Exist', year: 2021, streams: 7094977 },
+    { title: 'Dying Is Absolutely Safe', album: 'Holy Hell', year: 2018, streams: 7039927 },
+    { title: 'Goliath', album: 'For Those That Wish to Exist', year: 2021, streams: 7022941 },
+    { title: 'From the Wilderness', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 6741238 },
+    { title: 'Colony Collapse', album: 'For Those That Wish to Exist', year: 2021, streams: 6338587 },
+    { title: 'The Devil Is Near', album: 'Lost Forever // Lost Together', year: 2014, streams: 6337776 },
+    { title: 'Dead Man Talking', album: 'Lost Forever // Lost Together', year: 2014, streams: 6293463 },
+    { title: 'Early Grave', album: 'Ruin', year: 2007, streams: 6285705 },
+    { title: 'Judgement Day', album: 'Holy Hell', year: 2018, streams: 5954404 },
+    { title: 'Castles in the Air', album: 'Lost Forever // Lost Together', year: 2014, streams: 5950051 },
+    { title: 'Do You Dream Of Armageddon?', album: 'For Those That Wish to Exist', year: 2021, streams: 5922762 },
+    { title: 'Landmines', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 5856532 },
+    { title: 'Flight Without Feathers', album: 'For Those That Wish to Exist', year: 2021, streams: 5821878 },
+    { title: 'doomscrolling', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 5510319 },
+    { title: 'Evil Eyes', album: 'The Sky, the Earth & All Between', year: 2025, streams: 5313626 },
+    { title: 'Youth Is Wasted on the Young', album: 'Lost Forever // Lost Together', year: 2014, streams: 5166848 },
+    { title: 'Demi God', album: 'For Those That Wish to Exist', year: 2021, streams: 5092324 },
+    { title: 'The Distant Blue', album: 'Lost Forever // Lost Together', year: 2014, streams: 4722093 },
+    { title: 'Even If You Win, You\'re Still A Rat', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 4661654 },
+    { title: 'Red Hypergiant', album: 'Lost Forever // Lost Together', year: 2014, streams: 4630545 },
+    { title: 'Daybreak', album: 'Daybreaker', year: 2012, streams: 4487814 },
+    { title: 'Chandelier', album: 'The Sky, the Earth & All Between', year: 2025, streams: 4317100 },
+    { title: 'Devil\'s Island', album: 'Daybreaker', year: 2012, streams: 4251660 },
+    { title: 'be very afraid', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 4243935 },
+    { title: 'Change (In The House Of Flies)', album: 'The Here and Now', year: 2011, streams: 4238849 },
+    { title: 'spit the bone', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 4060155 },
+    { title: 'Day in Day Out', album: 'The Here and Now', year: 2011, streams: 3995936 },
+    { title: 'Heartburn', album: 'The Here and Now', year: 2011, streams: 3948916 },
+    { title: 'Hollow Crown', album: 'Hollow Crown', year: 2009, streams: 3930571 },
+    { title: 'Learn to Live', album: 'The Here and Now', year: 2011, streams: 3829540 },
+    { title: 'living is killing us', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 3606059 },
+    { title: 'Impermanence - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 3299542 },
+    { title: 'The Bitter End', album: 'Daybreaker', year: 2012, streams: 3290550 },
+    { title: 'all the love in the world', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 3046243 },
+    { title: 'An Open Letter to Myself', album: 'Hollow Crown', year: 2009, streams: 2983413 },
+    { title: 'A Wasted Hymn - Acoustic', album: 'Holy Hell', year: 2018, streams: 2964279 },
+    { title: 'Death Is Not Defeat', album: 'Holy Hell', year: 2018, streams: 2951102 },
+    { title: 'Truth, Be Told', album: 'Daybreaker', year: 2012, streams: 2909059 },
+    { title: 'Black Blood', album: 'Hollow Crown', year: 2009, streams: 2900143 },
+    { title: 'born again pessimist', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 2720860 },
+    { title: 'Outsider Heart', album: 'Daybreaker', year: 2012, streams: 2526036 },
+    { title: 'Follow the Water', album: 'Ruin', year: 2007, streams: 2411430 },
+    { title: 'Unbeliever', album: 'The Here and Now', year: 2011, streams: 2393780 },
+    { title: 'Behind the Throne', album: 'Daybreaker', year: 2012, streams: 1980614 },
+    { title: 'Animals - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 1791788 },
+    { title: 'Feather Of Lead', album: 'Daybreaker', year: 2012, streams: 1780411 },
+    { title: 'Delete, Rewind', album: 'The Here and Now', year: 2011, streams: 1700090 },
+    { title: 'Dethroned', album: 'Hollow Crown', year: 2009, streams: 1668875 },
+    { title: 'Red Eyes', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 1632646 },
+    { title: 'Blood Bank', album: 'The Here and Now', year: 2011, streams: 1605829 },
+    { title: 'Numbers Count for Nothing', album: 'Hollow Crown', year: 2009, streams: 1547038 },
+    { title: 'BTN', album: 'Hollow Crown', year: 2009, streams: 1504050 },
+    { title: 'In Elegance', album: 'Hollow Crown', year: 2009, streams: 1503440 },
+    { title: 'Of Dust and Nations', album: 'The Here and Now', year: 2011, streams: 1327949 },
+    { title: 'Heartburn (acoustic version)', album: 'The Here and Now', year: 2011, streams: 1321158 },
+    { title: 'Cracks In the Earth', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 1302015 },
+    { title: 'The Blues', album: 'The Sky, the Earth & All Between', year: 2025, streams: 1228344 },
+    { title: 'Black Lungs - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 1170947 },
+    { title: 'We\'re All Alone', album: 'The Sky, the Earth & All Between', year: 2025, streams: 1169835 },
+    { title: 'Stay Young Forever', album: 'The Here and Now', year: 2011, streams: 1154518 },
+    { title: 'Year in Year Out/Up and Away', album: 'The Sky, the Earth & All Between', year: 2025, streams: 1109207 },
+    { title: 'Little Wonder - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 1104377 },
+    { title: 'Dead Butterflies - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 1061546 },
+    { title: 'Giving Blood - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 962226 },
+    { title: 'Dead March', album: 'Ruin', year: 2007, streams: 961495 },
+    { title: 'Every Last Breath', album: 'Hollow Crown', year: 2009, streams: 960735 },
+    { title: 'Borrowed Time', album: 'Ruin', year: 2007, streams: 914690 },
+    { title: 'One of These Days', album: 'The Here and Now', year: 2011, streams: 894948 },
+    { title: 'Discourse Is Dead - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 890107 },
+    { title: 'Do You Dream Of Armageddon? - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 864902 },
+    { title: 'An Ordinary Extinction - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 845738 },
+    { title: 'Left With a Last Minute', album: 'Ruin', year: 2007, streams: 795430 },
+    { title: 'Flight Without Feathers - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 722713 },
+    { title: 'Libertine - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 703737 },
+    { title: 'Buried at Sea', album: 'Hollow Crown', year: 2009, streams: 679708 },
+    { title: 'Dying Is Absolutely Safe - Abbey Road Version', album: 'Holy Hell', year: 2018, streams: 660935 },
+    { title: 'Meteor - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 644908 },
+    { title: 'Goliath - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 610930 },
+    { title: 'Demi God - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 561823 },
+    { title: 'To the Death', album: 'Ruin', year: 2007, streams: 501768 },
+    { title: 'Always', album: 'Ruin', year: 2007, streams: 424508 },
+    { title: 'Hunt Them Down', album: 'Ruin', year: 2007, streams: 413016 },
+    { title: 'North Lane', album: 'Ruin', year: 2007, streams: 391887 },
+    { title: 'You\'ll Find Safety', album: 'Ruin', year: 2007, streams: 388849 },
+    { title: 'You Don\'t Walk Away from Disemberment', album: 'Ruin', year: 2007, streams: 388745 },
+    { title: 'Heartless', album: 'Ruin', year: 2007, streams: 372269 },
+    { title: 'Broken Clocks', album: 'Ruin', year: 2007, streams: 360043 },
+    { title: 'In the Desert', album: 'Ruin', year: 2007, streams: 330026 },
+    { title: 'Minesweeper', album: 'Ruin', year: 2007, streams: 314710 },
+    { title: 'Low', album: 'Ruin', year: 2007, streams: 312650 },
+    { title: 'Save Me', album: 'Ruin', year: 2007, streams: 299600 },
+    { title: 'This Confession Means Nothing', album: 'Ruin', year: 2007, streams: 295012 },
+    { title: 'Sail This Ship Alone', album: 'Ruin', year: 2007, streams: 292951 },
+    { title: 'I Can\'t See the Light', album: 'Ruin', year: 2007, streams: 292423 },
+    { title: 'The Darkest Tomb', album: 'Ruin', year: 2007, streams: 280418 },
+    { title: 'Running From the Sun', album: 'Ruin', year: 2007, streams: 279987 },
+    { title: 'They\'ll be Hanging Us Tonight', album: 'Ruin', year: 2007, streams: 263980 },
+    { title: 'A Portrait for the Deceased', album: 'Nightmares', year: 2006, streams: 215908 },
+  ];
+
+  // ---- FORMAT ----
+  function fmtStreams(n) {
+    return n.toLocaleString();
+  }
+
+  // ---- PERSISTENT BEST SCORE (localStorage) ----
+  const LS_KEY = 'architects_hol_best';
+  function loadBest() {
+    try { return parseInt(localStorage.getItem(LS_KEY) || '0', 10); } catch(e) { return 0; }
+  }
+  function saveBest(val) {
+    try { localStorage.setItem(LS_KEY, String(val)); } catch(e) {}
+  }
+
+  // ---- STATE ----
+  let score = 0, streak = 0, bestStreak = 0;
+  let leftIdx = 0, rightIdx = 1;
+  let shuffled = [], canGuess = true;
+  let allTimeBest = loadBest();
+
+  // ---- INIT ----
+  document.getElementById('bestDisplay').textContent = allTimeBest;
+
+  function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function initGame() {
+    shuffled = shuffle(songs);
+    leftIdx = 0; rightIdx = 1;
+    score = 0; streak = 0; bestStreak = 0;
+    canGuess = true;
+    updateHUD();
+    renderCards(false);
+  }
+
+  // ---- APPLY ACCENT COLOR ----
+  function applyAccent(card, dot, pill, album) {
+    const col = albumColor(album);
+    card.style.setProperty('--accent', col);
+    dot.style.background = col;
+    pill.style.borderColor = col + '33';
+    pill.style.color = col;
+  }
+
+  // ---- RENDER CARDS ----
+  function renderCards(animate = true) {
+    const left = shuffled[leftIdx];
+    const right = shuffled[rightIdx];
+
+    const cardLeft  = document.getElementById('cardLeft');
+    const cardRight = document.getElementById('cardRight');
+
+    // Left card
+    cardLeft.className = 'card left';
+    applyAccent(cardLeft, document.getElementById('leftDot'), document.getElementById('leftAlbumPill'), left.album);
+    document.getElementById('leftAlbum').textContent = left.album + ' · ' + left.year;
+    document.getElementById('leftSong').textContent = left.title.toUpperCase();
+    document.getElementById('leftStreams').textContent = fmtStreams(left.streams);
+
+    // Right card
+    cardRight.className = 'card right' + (animate ? ' animate-in' : '');
+    applyAccent(cardRight, document.getElementById('rightDot'), document.getElementById('rightAlbumPill'), right.album);
+    document.getElementById('rightAlbum').textContent = right.album + ' · ' + right.year;
+    document.getElementById('rightSong').textContent = right.title.toUpperCase();
+    document.getElementById('rightQuestion').style.display = 'block';
+    document.getElementById('rightStreamsWrap').style.display = 'none';
+
+    document.getElementById('btnHigher').disabled = false;
+    document.getElementById('btnLower').disabled = false;
+
+    updateProgress();
+  }
+
+  // ---- HUD ----
+  function updateHUD() {
+    document.getElementById('scoreDisplay').textContent = score;
+    document.getElementById('bestDisplay').textContent = allTimeBest;
+    const badge = document.getElementById('streakBadge');
+    if (streak >= 2) {
+      badge.textContent = (streak >= 5 ? '🔥' : '⚡') + ' ' + streak;
+      badge.classList.add('show');
+    } else {
+      badge.classList.remove('show');
+    }
+  }
+
+  function updateProgress() {
+    const total = shuffled.length - 1;
+    const pct = (rightIdx / total) * 100;
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressLabel').textContent = rightIdx + ' / ' + total;
+  }
+
+  // ---- GUESS ----
+  function guess(dir) {
+    if (!canGuess) return;
+    canGuess = false;
+    document.getElementById('btnHigher').disabled = true;
+    document.getElementById('btnLower').disabled = true;
+
+    const left = shuffled[leftIdx];
+    const right = shuffled[rightIdx];
+    const isHigher = right.streams >= left.streams;
+    const isCorrect = (dir === 'higher' && isHigher) || (dir === 'lower' && !isHigher);
+
+    // Reveal
+    document.getElementById('rightQuestion').style.display = 'none';
+    document.getElementById('rightStreamsWrap').style.display = 'flex';
+    document.getElementById('rightStreams').textContent = fmtStreams(right.streams);
+
+    const cardRight = document.getElementById('cardRight');
+    if (isCorrect) {
+      cardRight.className = 'card right reveal-correct';
+      score++; streak++;
+      if (streak > bestStreak) bestStreak = streak;
+      // Check new all-time best mid-game
+      if (score > allTimeBest) {
+        allTimeBest = score;
+        saveBest(allTimeBest);
+        flashNewBest();
+      }
+    } else {
+      cardRight.className = 'card right reveal-wrong';
+      streak = 0;
+    }
+    updateHUD();
+    showToast(isCorrect, right);
+
+    setTimeout(() => {
+      hideToast();
+      if (!isCorrect) {
+        showGameOver();
+      } else if (rightIdx + 1 >= shuffled.length) {
+        showGameOver(true);
+      } else {
+        leftIdx = rightIdx;
+        rightIdx++;
+        canGuess = true;
+        renderCards(true);
+      }
+    }, 1500);
+  }
+
+  // ---- TOAST ----
+  function showToast(correct, right) {
+    const toast = document.getElementById('resultToast');
+    toast.className = 'result-toast show ' + (correct ? 'correct' : 'wrong');
+    document.getElementById('toastIcon').textContent = correct ? '✓' : '✗';
+    document.getElementById('toastTitle').textContent = correct ? 'CORRECT!' : 'WRONG!';
+    const diff = Math.abs(shuffled[rightIdx].streams - shuffled[leftIdx].streams);
+    document.getElementById('toastDesc').textContent =
+      '"' + right.title + '" — ' + fmtStreams(right.streams) + ' streams' +
+      (correct ? '  ·  ' + fmtStreams(diff) + ' apart' : '');
+  }
+  function hideToast() {
+    document.getElementById('resultToast').className = 'result-toast';
+  }
+
+  // ---- NEW BEST MID-GAME FLASH ----
+  let newBestTimer = null;
+  function flashNewBest() {
+    const el = document.getElementById('newBestBadge');
+    el.classList.add('show');
+    if (newBestTimer) clearTimeout(newBestTimer);
+    newBestTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  }
+
+  // ---- GAME OVER ----
+  function showGameOver(win = false) {
+    // Final best update
+    if (score > allTimeBest) { allTimeBest = score; saveBest(allTimeBest); }
+    const isNewBest = (score > 0 && score >= allTimeBest && allTimeBest === score);
+
+    document.getElementById('goHeader').textContent = win ? 'YOU WIN!' : 'GAME OVER';
+    document.getElementById('goHeader').className = 'go-header' + (win ? ' win' : '');
+    document.getElementById('finalScore').textContent = score;
+    document.getElementById('goStreak').textContent = bestStreak;
+    document.getElementById('goAllTime').textContent = allTimeBest;
+    document.getElementById('bestDisplay').textContent = allTimeBest;
+
+    const newBestEl = document.getElementById('goNewBest');
+    if (isNewBest && score > 0) {
+      newBestEl.classList.add('show');
+      if (score >= 10) launchConfetti();
+    } else {
+      newBestEl.classList.remove('show');
+    }
+
+    let rank = '';
+    if (score >= 50)     rank = '🏆 <strong>Architects Legend</strong>';
+    else if (score >= 30) rank = '🎸 <strong>Metalcore Master</strong>';
+    else if (score >= 20) rank = '🔥 <strong>Holy Hell Devotee</strong>';
+    else if (score >= 12) rank = '⚡ <strong>Lost But Trying</strong>';
+    else if (score >= 6)  rank = '💀 <strong>Fresh Meat</strong>';
+    else                  rank = '🪦 <strong>Never Listened to Architects</strong>';
+    document.getElementById('goRank').innerHTML = rank;
+
+    document.getElementById('gameOverlay').className = 'game-over-overlay show';
+  }
+
+  function restartGame() {
+    document.getElementById('gameOverlay').className = 'game-over-overlay';
+    stopConfetti();
+    initGame();
+  }
+
+  // ---- CONFETTI ----
+  let confettiAnim = null;
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx = canvas.getContext('2d');
+  let particles = [];
+
+  function launchConfetti() {
+    canvas.style.display = 'block';
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    particles = [];
+    const colors = ['#c8102e','#1ed760','#f5a623','#4a90d9','#fff','#06d6a0'];
+    for (let i = 0; i < 120; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: -10 - Math.random() * 100,
+        w: 6 + Math.random() * 8,
+        h: 3 + Math.random() * 5,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rot: Math.random() * Math.PI * 2,
+        vx: (Math.random() - 0.5) * 3,
+        vy: 2 + Math.random() * 4,
+        vrot: (Math.random() - 0.5) * 0.2,
+        life: 1,
+      });
+    }
+    function frame() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        p.x += p.vx; p.y += p.vy; p.rot += p.vrot;
+        p.vy += 0.05;
+        if (p.y > canvas.height) { p.life -= 0.05; }
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+        ctx.restore();
+      });
+      particles = particles.filter(p => p.life > 0);
+      if (particles.length > 0) {
+        confettiAnim = requestAnimationFrame(frame);
+      } else {
+        canvas.style.display = 'none';
+      }
+    }
+    confettiAnim = requestAnimationFrame(frame);
+  }
+
+  function stopConfetti() {
+    if (confettiAnim) cancelAnimationFrame(confettiAnim);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.style.display = 'none';
+    particles = [];
+  }
+
+  // ---- START ----
+  initGame();
+</script>
+</body>
+</html>
