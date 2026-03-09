@@ -1066,11 +1066,11 @@
   }
 
   // ---- YOUTUBE IFRAME ----
-  const YT_PARAMS = 'autoplay=1&mute=1&loop=1&rel=0&playsinline=1&controls=1&iv_load_policy=3';
+  const YT_PARAMS = 'autoplay=1&mute=1&rel=0&playsinline=1&controls=1&iv_load_policy=3';
   function setYtBg(elemId, videoId) {
     const iframe = document.getElementById(elemId);
     iframe.src = videoId
-      ? 'https://www.youtube-nocookie.com/embed/' + videoId + '?playlist=' + videoId + '&' + YT_PARAMS
+      ? 'https://www.youtube-nocookie.com/embed/' + videoId + '?' + YT_PARAMS
       : '';
   }
 
