@@ -567,6 +567,77 @@
       .header-right { gap: 8px; }
       .stat-chip { padding: 6px 10px; min-width: 58px; }
     }
+
+    /* ---- MODE TOGGLE ---- */
+    .mode-toggle {
+      display: flex;
+      background: #0f0f12;
+      border: 1px solid #1e1e24;
+      border-radius: 10px;
+      padding: 3px;
+      gap: 2px;
+      margin-left: 8px;
+    }
+    .mode-btn {
+      padding: 6px 14px;
+      border: none;
+      border-radius: 7px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: #555;
+      background: transparent;
+      white-space: nowrap;
+    }
+    .mode-btn.active { background: var(--red); color: #fff; }
+    .mode-btn:not(.active):hover { color: #ccc; }
+
+    /* ---- YOUTUBE MODE LAYOUT ---- */
+    .yt-active .game-wrap { max-width: 100%; padding: 0; }
+    .yt-active .cards-row { border-radius: 0; }
+    .yt-active .progress-strip { max-width: 100%; padding: 10px 24px 4px; }
+    .yt-active .card { min-height: 75vh; padding: 40px 28px 32px; }
+    .yt-active .song-title { font-size: 2.8rem; }
+
+    /* ---- YOUTUBE IFRAME BACKGROUND ---- */
+    .yt-bg {
+      position: absolute;
+      top: 50%; left: 50%;
+      /* Scale to cover: use a large multiple to ensure fill regardless of aspect ratio */
+      /* Extra bottom margin hides the YouTube controls bar below the card edge */
+      width: calc(100% + 300px);
+      height: calc(100% + 360px); /* extra 60px pushes controls below overflow:hidden edge */
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      border: none;
+      z-index: 0;
+      display: none;
+    }
+    .yt-active .yt-bg { display: block; }
+
+    /* Dark overlay on top of video */
+    .yt-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.45) 50%, rgba(0,0,0,0.65) 100%);
+      z-index: 1;
+      pointer-events: none;
+      display: none;
+    }
+    .yt-active .yt-overlay { display: block; }
+
+    /* Ensure card content sits above the video */
+    .card > *:not(.yt-bg):not(.yt-overlay) { position: relative; z-index: 2; }
+
+    /* In YT mode: card bg becomes transparent so video shows through */
+    .yt-active .card { background: #080808; }
+    .yt-active .card.reveal-correct { background: rgba(10,26,15,0.3); }
+    .yt-active .card.reveal-wrong   { background: rgba(24,8,16,0.3);  }
+    .yt-active .card.reveal-correct .yt-overlay { background: linear-gradient(to bottom, rgba(0,40,10,0.6) 0%, rgba(0,25,8,0.4) 100%); }
+    .yt-active .card.reveal-wrong   .yt-overlay { background: linear-gradient(to bottom, rgba(40,0,10,0.6) 0%, rgba(25,0,8,0.4) 100%); }
   </style>
 </head>
 <body>
@@ -576,9 +647,13 @@
 <header>
   <div class="header-left">
     <h1>ARCHITECTS <span>/</span> HIGHER OR LOWER</h1>
-    <div class="header-sub">Spotify Streams</div>
+    <div class="header-sub" id="headerSub">Spotify Streams</div>
   </div>
   <div class="header-right">
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="modeSpotify" onclick="switchMode('spotify')">🎵 Spotify</button>
+      <button class="mode-btn" id="modeYoutube" onclick="switchMode('youtube')">📺 YouTube</button>
+    </div>
     <div class="stat-chip">
       <span class="stat-val" id="scoreDisplay">0</span>
       <span class="stat-lbl">Score</span>
@@ -599,23 +674,27 @@
 <div class="game-wrap">
   <div class="cards-row" id="cardsRow">
     <div class="card left" id="cardLeft">
-      <div class="album-pill" id="leftAlbumPill"><span class="album-dot" id="leftDot"></span><span id="leftAlbum"></span></div>
+      <iframe class="yt-bg" id="leftYtBg" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+      <div class="yt-overlay"></div>
+      <div class="album-pill" id="leftAlbumPill"><span class="album-dot" id="leftDot"></span><span class="pill-text" id="leftAlbum"></span></div>
       <div class="song-title" id="leftSong"></div>
       <div class="streams-wrap">
         <div class="streams-display" id="leftStreams"></div>
-        <div class="streams-label">Spotify streams</div>
+        <div class="streams-label" id="leftStreamsLabel">Spotify streams</div>
       </div>
     </div>
 
     <div class="vs-badge">VS</div>
 
     <div class="card right" id="cardRight">
-      <div class="album-pill" id="rightAlbumPill"><span class="album-dot" id="rightDot"></span><span id="rightAlbum"></span></div>
+      <iframe class="yt-bg" id="rightYtBg" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+      <div class="yt-overlay"></div>
+      <div class="album-pill" id="rightAlbumPill"><span class="album-dot" id="rightDot"></span><span class="pill-text" id="rightAlbum"></span></div>
       <div class="song-title" id="rightSong"></div>
       <div class="question-mark" id="rightQuestion">?</div>
       <div class="streams-wrap" id="rightStreamsWrap" style="display:none">
         <div class="streams-display" id="rightStreams"></div>
-        <div class="streams-label">Spotify streams</div>
+        <div class="streams-label" id="rightStreamsLabel">Spotify streams</div>
       </div>
     </div>
   </div>
@@ -679,10 +758,25 @@
     'The Classic Symptoms of a Broken Spirit':      '#a855f7',
     'The Sky, the Earth & All Between':             '#06d6a0',
   };
+  function albumColor(album) { return albumColors[album] || '#888'; }
 
-  function albumColor(album) {
-    return albumColors[album] || '#888';
-  }
+  // ---- YOUTUBE CATEGORY COLORS ----
+  const categoryColors = {
+    'Official MV':       '#FF0000',
+    'Live':              '#ff6b35',
+    'Abbey Road':        '#4a90d9',
+    'Backstage':         '#e8832a',
+    'Behind the Scenes': '#a855f7',
+    'Documentary':       '#2ecc9a',
+    'Cover':             '#8b7355',
+    'Recording Session': '#3498db',
+    'Lyric Video':       '#c8102e',
+    'Trailer':           '#666',
+    'Subtitled':         '#aaa',
+    'Preview':           '#666',
+    'Teaser':            '#666',
+  };
+  function categoryColor(cat) { return categoryColors[cat] || '#888'; }
 
   // ---- SONG DATA ---- (147 songs, all matched to correct albums)
   const songs = [
@@ -702,14 +796,14 @@
     { title: 'Whiplash', album: 'The Sky, the Earth & All Between', year: 2025, streams: 25171745 },
     { title: 'deep fake', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 23990945 },
     { title: 'Impermanence', album: 'For Those That Wish to Exist', year: 2021, streams: 23287818 },
-    { title: 'Everything Ends', album: 'The Sky, The Earth & All Between', year: 2025, streams: 22906345 },
+    { title: 'Everything Ends', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 22906345 },
     { title: 'Gravedigger', album: 'Lost Forever // Lost Together', year: 2014, streams: 22151146 },
     { title: 'Nihilist', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 20491787 },
     { title: 'Holy Hell', album: 'Holy Hell', year: 2018, streams: 19485207 },
     { title: 'Giving Blood', album: 'For Those That Wish to Exist', year: 2021, streams: 16685373 },
-    { title: 'Gravity', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 16569270 },
+    { title: 'Gravity', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 16569270 },
     { title: 'Modern Misery', album: 'Holy Hell', year: 2018, streams: 16199349 },
-    { title: 'These Colours Don\'t Run', album: 'Daybreaker', year: 2012, streams: 16063636 },
+    { title: 'These Colours Don\'t Run', album: 'Lost Forever // Lost Together', year: 2014, streams: 16063636 },
     { title: 'tear gas', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 15677741 },
     { title: 'Naysayer', album: 'Lost Forever // Lost Together', year: 2014, streams: 15031300 },
     { title: 'Broken Cross', album: 'Lost Forever // Lost Together', year: 2014, streams: 14367586 },
@@ -717,48 +811,49 @@
     { title: 'Mortal After All', album: 'Holy Hell', year: 2018, streams: 13447035 },
     { title: 'Little Wonder', album: 'For Those That Wish to Exist', year: 2021, streams: 12989101 },
     { title: 'Deathwish', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 12619066 },
-    { title: 'Elegy', album: 'The Sky, the Earth & All Between', year: 2025, streams: 11450283 },
+    { title: 'Elegy', album: 'Holy Hell', year: 2018, streams: 11450283 },
     { title: 'Downfall', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 11361291 },
     { title: 'Discourse Is Dead', album: 'For Those That Wish to Exist', year: 2021, streams: 10614802 },
     { title: 'An Ordinary Extinction', album: 'For Those That Wish to Exist', year: 2021, streams: 10608480 },
-    { title: 'Doomsday - Piano Reprise', album: 'Doomsday Single', year: 2018, streams: 10579808 },
+    { title: 'Doomsday - Piano Reprise', album: 'For Those That Wish to Exist', year: 2021, streams: 10579808 },
     { title: 'A Wasted Hymn', album: 'Holy Hell', year: 2018, streams: 10083519 },
     { title: 'Phantom Fear', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 10081768 },
-    { title: 'Brain Dead', album: 'The Sky, The Earth & All Between', year: 2025, streams: 9593142 },
-    { title: 'Broken Mirror', album: 'The Sky, The Earth & All Between', year: 2025, streams: 9374724 },
+    { title: 'Brain Dead', album: 'For Those That Wish to Exist', year: 2021, streams: 9593142 },
+    { title: 'Broken Mirror', album: 'Holy Hell', year: 2018, streams: 9374724 },
     { title: 'Damnation', album: 'Holy Hell', year: 2018, streams: 9313237 },
     { title: 'The Seventh Circle', album: 'Holy Hell', year: 2018, streams: 9290289 },
-    { title: 'Memento Mori', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 9070085 },
+    { title: 'Memento Mori', album: 'For Those That Wish to Exist', year: 2021, streams: 9070085 },
     { title: 'burn down my house', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 8588879 },
-    { title: 'Dying To Heal', album: 'Holy Hell', year: 2018, streams: 8492333 },
-    { title: 'The Empty Hourglass', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 8314564 },
+    { title: 'Dying To Heal', album: 'For Those That Wish to Exist', year: 2021, streams: 8492333 },
+    { title: 'The Empty Hourglass', album: 'Holy Hell', year: 2018, streams: 8314564 },
     { title: 'C.A.N.C.E.R', album: 'Lost Forever // Lost Together', year: 2014, streams: 7655089 },
-    { title: 'All Love Is Lost', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 7450626 },
+    { title: 'All Love Is Lost', album: 'Lost Forever // Lost Together', year: 2014, streams: 7450626 },
     { title: 'Alpha Omega', album: 'Daybreaker', year: 2012, streams: 7303478 },
     { title: 'Libertine', album: 'For Those That Wish to Exist', year: 2021, streams: 7094977 },
-    { title: 'Dying Is Absolutely Safe', album: 'For Those That Wish To Exist', year: 2021, streams: 7039927 },
+    { title: 'Dying Is Absolutely Safe', album: 'Holy Hell', year: 2018, streams: 7039927 },
     { title: 'Goliath', album: 'For Those That Wish to Exist', year: 2021, streams: 7022941 },
     { title: 'From the Wilderness', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 6741238 },
-    { title: 'Colony Collapse', album: 'Lost Forever // Lost Together', year: 2014, streams: 6338587 },
+    { title: 'Colony Collapse', album: 'For Those That Wish to Exist', year: 2021, streams: 6338587 },
     { title: 'The Devil Is Near', album: 'Lost Forever // Lost Together', year: 2014, streams: 6337776 },
     { title: 'Dead Man Talking', album: 'Lost Forever // Lost Together', year: 2014, streams: 6293463 },
-    { title: 'Early Grave', album: 'Hollow Crown', year: 2009, streams: 6285705 },
-    { title: 'Judgement Day', album: 'The Sky, The Earth And All Between', year: 2025, streams: 5954404 },
+    { title: 'Early Grave', album: 'Ruin', year: 2007, streams: 6285705 },
+    { title: 'Judgement Day', album: 'Holy Hell', year: 2018, streams: 5954404 },
     { title: 'Castles in the Air', album: 'Lost Forever // Lost Together', year: 2014, streams: 5950051 },
     { title: 'Do You Dream Of Armageddon?', album: 'For Those That Wish to Exist', year: 2021, streams: 5922762 },
-    { title: 'Landmines', album: 'The Sky, The Earth And All Between', year: 2025, streams: 5856532 },
+    { title: 'Landmines', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 5856532 },
     { title: 'Flight Without Feathers', album: 'For Those That Wish to Exist', year: 2021, streams: 5821878 },
     { title: 'doomscrolling', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 5510319 },
     { title: 'Evil Eyes', album: 'The Sky, the Earth & All Between', year: 2025, streams: 5313626 },
     { title: 'Youth Is Wasted on the Young', album: 'Lost Forever // Lost Together', year: 2014, streams: 5166848 },
     { title: 'Demi God', album: 'For Those That Wish to Exist', year: 2021, streams: 5092324 },
     { title: 'The Distant Blue', album: 'Lost Forever // Lost Together', year: 2014, streams: 4722093 },
-    { title: 'Even If You Win, You\'re Still A Rat', album: 'Daybreaker', year: 2012, streams: 4661654 },
+    { title: 'Even If You Win, You\'re Still A Rat', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 4661654 },
     { title: 'Red Hypergiant', album: 'Lost Forever // Lost Together', year: 2014, streams: 4630545 },
     { title: 'Daybreak', album: 'Daybreaker', year: 2012, streams: 4487814 },
     { title: 'Chandelier', album: 'The Sky, the Earth & All Between', year: 2025, streams: 4317100 },
     { title: 'Devil\'s Island', album: 'Daybreaker', year: 2012, streams: 4251660 },
     { title: 'be very afraid', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 4243935 },
+    { title: 'Change (In The House Of Flies)', album: 'The Here and Now', year: 2011, streams: 4238849 },
     { title: 'spit the bone', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 4060155 },
     { title: 'Day in Day Out', album: 'The Here and Now', year: 2011, streams: 3995936 },
     { title: 'Heartburn', album: 'The Here and Now', year: 2011, streams: 3948916 },
@@ -770,85 +865,171 @@
     { title: 'all the love in the world', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 3046243 },
     { title: 'An Open Letter to Myself', album: 'Hollow Crown', year: 2009, streams: 2983413 },
     { title: 'A Wasted Hymn - Acoustic', album: 'Holy Hell', year: 2018, streams: 2964279 },
-    { title: 'Death Is Not Defeat', album: 'For Those That Wish To Exist', year: 2021, streams: 2951102 },
+    { title: 'Death Is Not Defeat', album: 'Holy Hell', year: 2018, streams: 2951102 },
     { title: 'Truth, Be Told', album: 'Daybreaker', year: 2012, streams: 2909059 },
-    { title: 'Black Blood', album: 'Daybreaker', year: 2012, streams: 2900143 },
+    { title: 'Black Blood', album: 'Hollow Crown', year: 2009, streams: 2900143 },
     { title: 'born again pessimist', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 2720860 },
     { title: 'Outsider Heart', album: 'Daybreaker', year: 2012, streams: 2526036 },
-    { title: 'Follow the Water', album: 'Hollow Crown', year: 2009, streams: 2411430 },
-    { title: 'Unbeliever', album: 'Daybreaker', year: 2012, streams: 2393780 },
+    { title: 'Follow the Water', album: 'Ruin', year: 2007, streams: 2411430 },
+    { title: 'Unbeliever', album: 'The Here and Now', year: 2011, streams: 2393780 },
     { title: 'Behind the Throne', album: 'Daybreaker', year: 2012, streams: 1980614 },
     { title: 'Animals - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 1791788 },
     { title: 'Feather Of Lead', album: 'Daybreaker', year: 2012, streams: 1780411 },
     { title: 'Delete, Rewind', album: 'The Here and Now', year: 2011, streams: 1700090 },
     { title: 'Dethroned', album: 'Hollow Crown', year: 2009, streams: 1668875 },
-    { title: 'Red Eyes', album: 'The Here And Now', year: 2011, streams: 1632646 },
-    { title: 'Blood Bank', album: 'Daybreaker', year: 2012, streams: 1605829 },
+    { title: 'Red Eyes', album: 'The Classic Symptoms of a Broken Spirit', year: 2022, streams: 1632646 },
+    { title: 'Blood Bank', album: 'The Here and Now', year: 2011, streams: 1605829 },
     { title: 'Numbers Count for Nothing', album: 'Hollow Crown', year: 2009, streams: 1547038 },
-    { title: 'BTN', album: 'The Here And Now', year: 2011, streams: 1504050 },
+    { title: 'BTN', album: 'Hollow Crown', year: 2009, streams: 1504050 },
     { title: 'In Elegance', album: 'Hollow Crown', year: 2009, streams: 1503440 },
-    { title: 'Of Dust and Nations', album: 'Daybreaker', year: 2012, streams: 1327949 },
+    { title: 'Of Dust and Nations', album: 'The Here and Now', year: 2011, streams: 1327949 },
     { title: 'Heartburn (acoustic version)', album: 'The Here and Now', year: 2011, streams: 1321158 },
-    { title: 'Cracks In the Earth', album: 'Daybreaker', year: 2012, streams: 1302015 },
-    { title: 'The Blues', album: 'The Here and Now', year: 2011, streams: 1228344 },
+    { title: 'Cracks In the Earth', album: 'All Our Gods Have Abandoned Us', year: 2016, streams: 1302015 },
+    { title: 'The Blues', album: 'The Sky, the Earth & All Between', year: 2025, streams: 1228344 },
     { title: 'Black Lungs - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 1170947 },
-    { title: 'We\'re All Alone', album: 'Hollow Crown', year: 2009, streams: 1169835 },
+    { title: 'We\'re All Alone', album: 'The Sky, the Earth & All Between', year: 2025, streams: 1169835 },
     { title: 'Stay Young Forever', album: 'The Here and Now', year: 2011, streams: 1154518 },
-    { title: 'Year in Year Out/Up and Away', album: 'The Here And Now', year: 2011, streams: 1109207 },
+    { title: 'Year in Year Out/Up and Away', album: 'The Sky, the Earth & All Between', year: 2025, streams: 1109207 },
     { title: 'Little Wonder - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 1104377 },
     { title: 'Dead Butterflies - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 1061546 },
     { title: 'Giving Blood - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 962226 },
-    { title: 'Dead March', album: 'Hollow Crown', year: 2009, streams: 961495 },
+    { title: 'Dead March', album: 'Ruin', year: 2007, streams: 961495 },
     { title: 'Every Last Breath', album: 'Hollow Crown', year: 2009, streams: 960735 },
-    { title: 'Borrowed Time', album: 'Hollow Crown', year: 2009, streams: 914690 },
-    { title: 'One of These Days', album: 'Hollow Crown', year: 2009, streams: 894948 },
+    { title: 'Borrowed Time', album: 'Ruin', year: 2007, streams: 914690 },
+    { title: 'One of These Days', album: 'The Here and Now', year: 2011, streams: 894948 },
     { title: 'Discourse Is Dead - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 890107 },
     { title: 'Do You Dream Of Armageddon? - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 864902 },
     { title: 'An Ordinary Extinction - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 845738 },
-    { title: 'Left With a Last Minute', album: 'Hollow Crown', year: 2009, streams: 795430 },
+    { title: 'Left With a Last Minute', album: 'Ruin', year: 2007, streams: 795430 },
     { title: 'Flight Without Feathers - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 722713 },
     { title: 'Libertine - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 703737 },
-    { title: 'Buried at Sea', album: 'Ruin', year: 2007, streams: 679708 },
+    { title: 'Buried at Sea', album: 'Hollow Crown', year: 2009, streams: 679708 },
     { title: 'Dying Is Absolutely Safe - Abbey Road Version', album: 'Holy Hell', year: 2018, streams: 660935 },
     { title: 'Meteor - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 644908 },
     { title: 'Goliath - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 610930 },
     { title: 'Demi God - Abbey Road Version', album: 'For Those That Wish to Exist', year: 2021, streams: 561823 },
-    { title: 'To the Death', album: 'Nightmares', year: 2006, streams: 501768 },
+    { title: 'To the Death', album: 'Ruin', year: 2007, streams: 501768 },
     { title: 'Always', album: 'Ruin', year: 2007, streams: 424508 },
     { title: 'Hunt Them Down', album: 'Ruin', year: 2007, streams: 413016 },
     { title: 'North Lane', album: 'Ruin', year: 2007, streams: 391887 },
     { title: 'You\'ll Find Safety', album: 'Ruin', year: 2007, streams: 388849 },
-    { title: 'You Don\'t Walk Away from Disemberment', album: 'Nightmares', year: 2006, streams: 388745 },
+    { title: 'You Don\'t Walk Away from Disemberment', album: 'Ruin', year: 2007, streams: 388745 },
     { title: 'Heartless', album: 'Ruin', year: 2007, streams: 372269 },
     { title: 'Broken Clocks', album: 'Ruin', year: 2007, streams: 360043 },
-    { title: 'In the Desert', album: 'Nightmares', year: 2006, streams: 330026 },
-    { title: 'Minesweeper', album: 'Nightmares', year: 2006, streams: 314710 },
+    { title: 'In the Desert', album: 'Ruin', year: 2007, streams: 330026 },
+    { title: 'Minesweeper', album: 'Ruin', year: 2007, streams: 314710 },
     { title: 'Low', album: 'Ruin', year: 2007, streams: 312650 },
     { title: 'Save Me', album: 'Ruin', year: 2007, streams: 299600 },
-    { title: 'This Confession Means Nothing', album: 'Nightmares', year: 2006, streams: 295012 },
+    { title: 'This Confession Means Nothing', album: 'Ruin', year: 2007, streams: 295012 },
     { title: 'Sail This Ship Alone', album: 'Ruin', year: 2007, streams: 292951 },
     { title: 'I Can\'t See the Light', album: 'Ruin', year: 2007, streams: 292423 },
-    { title: 'The Darkest Tomb', album: 'Nightmares', year: 2006, streams: 280418 },
+    { title: 'The Darkest Tomb', album: 'Ruin', year: 2007, streams: 280418 },
     { title: 'Running From the Sun', album: 'Ruin', year: 2007, streams: 279987 },
-    { title: 'They\'ll be Hanging Us Tonight', album: 'Nightmares', year: 2007, streams: 263980 },
+    { title: 'They\'ll be Hanging Us Tonight', album: 'Ruin', year: 2007, streams: 263980 },
     { title: 'A Portrait for the Deceased', album: 'Nightmares', year: 2006, streams: 215908 },
   ];
 
+  // ---- YOUTUBE VIDEO DATA ---- (61 videos)
+  const youtubeVideos = [
+    { title: 'Broken Mirror', videoId: 'tYAR-Jcj1uQ', category: 'Official MV', views: 1600000 },
+    { title: 'Brain Dead (feat. House of Protection)', videoId: 'W4ZlWw987KI', category: 'Official MV', views: 1500000 },
+    { title: 'Everything Ends', videoId: 'gEl5Q3SXJwc', category: 'Official MV', views: 2300000 },
+    { title: 'Whiplash', videoId: 'jkcHDdITeMw', category: 'Subtitled', views: 155000 },
+    { title: 'Blackhole', videoId: '8SoLPeFquLM', category: 'Official MV', views: 8400000 },
+    { title: 'Whiplash (CENSORED)', videoId: 'C9CrT6iC7Cc', category: 'Official MV', views: 1100000 },
+    { title: 'Whiplash (UNCENSORED)', videoId: 'c67cjKK_08M', category: 'Official MV', views: 1100000 },
+    { title: 'Seeing Red (Live at Bloodstock)', videoId: 'RpNuuzeCHwA', category: 'Live', views: 124000 },
+    { title: 'Curse', videoId: 'ulalrTPVxh0', category: 'Official MV', views: 3900000 },
+    { title: 'Seeing Red', videoId: '1YxNiEl_Fic', category: 'Official MV', views: 9900000 },
+    { title: 'Animals (Live at Alexandra Palace)', videoId: 'qXbQsS9UABI', category: 'Live', views: 2800000 },
+    { title: 'Frankfurt - 5.1.23 // Backstage', videoId: 'Mw9cf9Q-R88', category: 'Backstage', views: 23000 },
+    { title: 'Burn Down My House - Backstage in Dublin', videoId: 'ci3IxPopjE8', category: 'Backstage', views: 69000 },
+    { title: 'when we were young (Live at Alexandra Palace)', videoId: 'e75JiBLEtqU', category: 'Live', views: 1000000 },
+    { title: 'Dying Is Absolutely Safe (Abbey Road Version)', videoId: 'u2JACrEugzg', category: 'Abbey Road', views: 61000 },
+    { title: 'Black Lungs (Abbey Road Version)', videoId: 'sROyj3lOyJU', category: 'Abbey Road', views: 140000 },
+    { title: 'Libertine (Abbey Road Version)', videoId: 'lAxxj0FyN3c', category: 'Abbey Road', views: 85000 },
+    { title: 'Giving Blood (Abbey Road Version)', videoId: 'd4lhBxJadjo', category: 'Abbey Road', views: 109000 },
+    { title: 'Little Wonder (Abbey Road Version)', videoId: 'bj0JJvmjAGU', category: 'Abbey Road', views: 69000 },
+    { title: 'Dead Butterflies (Abbey Road Version)', videoId: 'XNFuu0Pvm7E', category: 'Abbey Road', views: 161000 },
+    { title: 'Goliath (Abbey Road Version)', videoId: 'TFTMt-36Tvs', category: 'Abbey Road', views: 62000 },
+    { title: 'Do You Dream Of Armageddon? (Abbey Road Version)', videoId: 'SkZcItjN0gU', category: 'Abbey Road', views: 104000 },
+    { title: 'Meteor (Abbey Road Version)', videoId: 'Sj_IRRKyWpo', category: 'Abbey Road', views: 86000 },
+    { title: 'Discourse Is Dead (Abbey Road Version)', videoId: 'FAlG2_eVuDQ', category: 'Abbey Road', views: 93000 },
+    { title: 'Demi God (Abbey Road Version)', videoId: 'BDu8YgoPDh0', category: 'Abbey Road', views: 64000 },
+    { title: 'Animals (Abbey Road Version)', videoId: '6-btnsdEaI8', category: 'Abbey Road', views: 86000 },
+    { title: 'An Ordinary Extinction (Abbey Road Version)', videoId: '5zU58KkEjPc', category: 'Abbey Road', views: 108000 },
+    { title: 'Flight Without Feathers (Abbey Road Version)', videoId: '3B7ywlDDAxA', category: 'Abbey Road', views: 71000 },
+    { title: 'Impermanence (Live From Abbey Road)', videoId: 'QUS-_CaMftE', category: 'Abbey Road', views: 2800000 },
+    { title: 'Abbey Road: "An Ordinary Extinction"', videoId: 'OGyB_D6EcDI', category: 'Abbey Road', views: 101000 },
+    { title: 'Abbey Road: "Impermanence"', videoId: 'LtJVBmzADLY', category: 'Abbey Road', views: 132000 },
+    { title: 'Abbey Road: Official Trailer', videoId: 'oi9XrZE5mPk', category: 'Abbey Road', views: 43000 },
+    { title: 'Dying Is Absolutely Safe (Live at Middle Farm Studios)', videoId: 'OnQhVL1o2CU', category: 'Live', views: 1200000 },
+    { title: 'Behind the Scenes of \'Animals\', recorded at Abbey Road for Amazon Music', videoId: 'Dp-KfG6ONjo', category: 'Abbey Road', views: 85000 },
+    { title: 'Animals (Orchestral Version) - Live at Abbey Road', videoId: 'OCJi5hVdiZU', category: 'Abbey Road', views: 8700000 },
+    { title: 'Architects Live At The Royal Albert Hall', videoId: 'LvWeQG1qawo', category: 'Live', views: 59000 },
+    { title: 'Architects Russia 2015', videoId: 'x0CLc7vMjfs', category: 'Behind the Scenes', views: 49000 },
+    { title: 'The Making Of Lost Forever // Lost Together', videoId: 'VtTFr9_COQw', category: 'Documentary', views: 450000 },
+    { title: 'Blood Bank (Bon Iver Cover)', videoId: 'pSqUCQeEY9k', category: 'Cover', views: 167000 },
+    { title: 'Of Dust And Nations (Thrice Cover)', videoId: 'u-vsBb8PGmg', category: 'Cover', views: 177000 },
+    { title: 'Black Blood', videoId: '6wYVvjzTCzw', category: 'Official MV', views: 2100000 },
+    { title: 'Black Blood Clip', videoId: 'DqAAuVTbOvc', category: 'Official MV', views: 57000 },
+    { title: 'Architects 100 Days Film Crowdfunded Release!', videoId: 'ZAwmNp74BPU', category: 'Documentary', views: 50000 },
+    { title: 'One Hundred Days - Trailer', videoId: 'jTBnH1HIKBQ', category: 'Documentary', views: 201000 },
+    { title: 'Architects Recording Daybreak', videoId: 'Hze468rjcQ8', category: 'Recording Session', views: 316000 },
+    { title: 'Even If You Win, You\'re Still A Rat (Official Video)', videoId: '1lSaAO9-YaY', category: 'Official MV', views: 686000 },
+    { title: 'Even If You Win You\'re Still A Rat Trailer', videoId: 'PR4zDzzwxDY', category: 'Trailer', views: 15000 },
+    { title: 'Architects Recording Outsider Heart', videoId: 'YToMsOMUqGw', category: 'Recording Session', views: 512000 },
+    { title: 'Taking On Arenas (Part 2)', videoId: 'jkhFjewAuJc', category: 'Behind the Scenes', views: 68000 },
+    { title: 'Taking On Arenas (Part 1)', videoId: '5lRTBSfAuWw', category: 'Behind the Scenes', views: 110000 },
+    { title: 'Even If You Win, You\'re Still A Rat', videoId: '_5Wrqi1KAmA', category: 'Official MV', views: 330000 },
+    { title: 'The Making Of Alpha Omega', videoId: 'CSSH6NfTfm8', category: 'Documentary', views: 50000 },
+    { title: 'Daybreaker Previews', videoId: 'gwn0DGWjDog', category: 'Trailer', views: 114000 },
+    { title: 'ALPHA OMEGA - Coming soon....', videoId: 'iUwa1RQnEFM', category: 'Teaser', views: 30000 },
+    { title: 'ALPHA OMEGA', videoId: 'gcMeXcrstHs', category: 'Lyric Video', views: 310000 },
+    { title: 'These Colours Dont Run\'', videoId: 'FHHJF2cUwyY', category: 'Official MV', views: 6800000 },
+    { title: 'These Colours Dont Run\' Preview', videoId: '4iEj0hBKeM0', category: 'Trailer', views: 92000 },
+    { title: 'Architects Recording \'Untitled\'.', videoId: 'sKFBfonDAeI', category: 'Recording Session', views: 583000 },
+    { title: 'Architects Recording Devil\'s Island', videoId: 'JAytEDG9VKw', category: 'Recording Session', views: 750000 },
+    { title: 'Devil\'s Island', videoId: 'CmOrHwWbQ0c', category: 'Official MV', views: 1500000 },
+    { title: 'Learn To Live (OFFICIAL VIDEO)', videoId: 'ovknCm9JayI', category: 'Official MV', views: 210000 },
+  ];
+
   // ---- FORMAT ----
-  function fmtStreams(n) {
-    return n.toLocaleString();
+  function fmtStreams(n) { return n.toLocaleString(); }
+
+  // ---- PERSISTENT BEST SCORES ----
+  const LS_KEY    = 'architects_hol_best';
+  const LS_KEY_YT = 'architects_yt_best';
+  function loadBest()    { try { return parseInt(localStorage.getItem(LS_KEY)    || '0', 10); } catch(e) { return 0; } }
+  function saveBest(v)   { try { localStorage.setItem(LS_KEY,    String(v)); } catch(e) {} }
+  function loadBestYT()  { try { return parseInt(localStorage.getItem(LS_KEY_YT) || '0', 10); } catch(e) { return 0; } }
+  function saveBestYT(v) { try { localStorage.setItem(LS_KEY_YT, String(v)); } catch(e) {} }
+
+  // ---- MODE STATE ----
+  let currentMode = 'spotify';
+  function currentDataset()      { return currentMode === 'spotify' ? songs : youtubeVideos; }
+  function itemMetric(item)      { return currentMode === 'spotify' ? item.streams : item.views; }
+  function itemSubtitle(item)    { return currentMode === 'spotify' ? (item.album + ' · ' + item.year) : item.category; }
+  function itemAccentColor(item) { return currentMode === 'spotify' ? albumColor(item.album) : categoryColor(item.category); }
+  function metricLabel()         { return currentMode === 'spotify' ? 'Spotify streams' : 'YouTube views'; }
+
+  function switchMode(mode) {
+    if (mode === currentMode) return;
+    currentMode = mode;
+    document.getElementById('modeSpotify').className = 'mode-btn' + (mode === 'spotify' ? ' active' : '');
+    document.getElementById('modeYoutube').className = 'mode-btn' + (mode === 'youtube' ? ' active' : '');
+    document.body.className = mode === 'youtube' ? 'yt-active' : '';
+    document.getElementById('headerSub').textContent = mode === 'spotify' ? 'Spotify Streams' : 'YouTube Views';
+    allTimeBest = mode === 'spotify' ? loadBest() : loadBestYT();
+    document.getElementById('bestDisplay').textContent = allTimeBest;
+    if (mode === 'spotify') {
+      document.getElementById('leftYtBg').src  = '';
+      document.getElementById('rightYtBg').src = '';
+    }
+    initGame();
   }
 
-  // ---- PERSISTENT BEST SCORE (localStorage) ----
-  const LS_KEY = 'architects_hol_best';
-  function loadBest() {
-    try { return parseInt(localStorage.getItem(LS_KEY) || '0', 10); } catch(e) { return 0; }
-  }
-  function saveBest(val) {
-    try { localStorage.setItem(LS_KEY, String(val)); } catch(e) {}
-  }
-
-  // ---- STATE ----
+  // ---- GAME STATE ----
   let score = 0, streak = 0, bestStreak = 0;
   let leftIdx = 0, rightIdx = 1;
   let shuffled = [], canGuess = true;
@@ -867,7 +1048,7 @@
   }
 
   function initGame() {
-    shuffled = shuffle(songs);
+    shuffled = shuffle(currentDataset());
     leftIdx = 0; rightIdx = 1;
     score = 0; streak = 0; bestStreak = 0;
     canGuess = true;
@@ -875,48 +1056,65 @@
     renderCards(false);
   }
 
-  // ---- APPLY ACCENT COLOR ----
-  function applyAccent(card, dot, pill, album) {
-    const col = albumColor(album);
-    card.style.setProperty('--accent', col);
-    dot.style.background = col;
-    pill.style.borderColor = col + '33';
-    pill.style.color = col;
+  // ---- ACCENT COLOR ----
+  function applyAccent(card, dot, pill, color, subtitleText) {
+    card.style.setProperty('--accent', color);
+    dot.style.background = color;
+    pill.style.borderColor = color + '33';
+    pill.style.color = color;
+    const pt = pill.querySelector('.pill-text');
+    if (pt) pt.textContent = subtitleText;
+  }
+
+  // ---- YOUTUBE IFRAME ----
+  const YT_PARAMS = 'autoplay=1&mute=1&loop=1&rel=0&playsinline=1&controls=1&iv_load_policy=3';
+  function setYtBg(elemId, videoId) {
+    const iframe = document.getElementById(elemId);
+    iframe.src = videoId
+      ? 'https://www.youtube-nocookie.com/embed/' + videoId + '?playlist=' + videoId + '&' + YT_PARAMS
+      : '';
   }
 
   // ---- RENDER CARDS ----
   function renderCards(animate = true) {
-    const left = shuffled[leftIdx];
+    const left  = shuffled[leftIdx];
     const right = shuffled[rightIdx];
+    const isYT  = currentMode === 'youtube';
 
     const cardLeft  = document.getElementById('cardLeft');
     const cardRight = document.getElementById('cardRight');
 
+    if (isYT) {
+      setYtBg('leftYtBg',  left.videoId);
+      setYtBg('rightYtBg', right.videoId);
+    }
+
     // Left card
     cardLeft.className = 'card left';
-    applyAccent(cardLeft, document.getElementById('leftDot'), document.getElementById('leftAlbumPill'), left.album);
-    document.getElementById('leftAlbum').textContent = left.album + ' · ' + left.year;
-    document.getElementById('leftSong').textContent = left.title.toUpperCase();
-    document.getElementById('leftStreams').textContent = fmtStreams(left.streams);
+    applyAccent(cardLeft,  document.getElementById('leftDot'),  document.getElementById('leftAlbumPill'),
+                itemAccentColor(left),  itemSubtitle(left));
+    document.getElementById('leftSong').textContent         = left.title.toUpperCase();
+    document.getElementById('leftStreams').textContent      = fmtStreams(itemMetric(left));
+    document.getElementById('leftStreamsLabel').textContent = metricLabel();
 
     // Right card
     cardRight.className = 'card right' + (animate ? ' animate-in' : '');
-    applyAccent(cardRight, document.getElementById('rightDot'), document.getElementById('rightAlbumPill'), right.album);
-    document.getElementById('rightAlbum').textContent = right.album + ' · ' + right.year;
-    document.getElementById('rightSong').textContent = right.title.toUpperCase();
-    document.getElementById('rightQuestion').style.display = 'block';
+    applyAccent(cardRight, document.getElementById('rightDot'), document.getElementById('rightAlbumPill'),
+                itemAccentColor(right), itemSubtitle(right));
+    document.getElementById('rightSong').textContent          = right.title.toUpperCase();
+    document.getElementById('rightQuestion').style.display    = 'block';
     document.getElementById('rightStreamsWrap').style.display = 'none';
+    document.getElementById('rightStreamsLabel').textContent  = metricLabel();
 
     document.getElementById('btnHigher').disabled = false;
-    document.getElementById('btnLower').disabled = false;
-
+    document.getElementById('btnLower').disabled  = false;
     updateProgress();
   }
 
   // ---- HUD ----
   function updateHUD() {
     document.getElementById('scoreDisplay').textContent = score;
-    document.getElementById('bestDisplay').textContent = allTimeBest;
+    document.getElementById('bestDisplay').textContent  = allTimeBest;
     const badge = document.getElementById('streakBadge');
     if (streak >= 2) {
       badge.textContent = (streak >= 5 ? '🔥' : '⚡') + ' ' + streak;
@@ -928,8 +1126,8 @@
 
   function updateProgress() {
     const total = shuffled.length - 1;
-    const pct = (rightIdx / total) * 100;
-    document.getElementById('progressFill').style.width = pct + '%';
+    const pct   = (rightIdx / total) * 100;
+    document.getElementById('progressFill').style.width  = pct + '%';
     document.getElementById('progressLabel').textContent = rightIdx + ' / ' + total;
   }
 
@@ -938,27 +1136,30 @@
     if (!canGuess) return;
     canGuess = false;
     document.getElementById('btnHigher').disabled = true;
-    document.getElementById('btnLower').disabled = true;
+    document.getElementById('btnLower').disabled  = true;
 
-    const left = shuffled[leftIdx];
-    const right = shuffled[rightIdx];
-    const isHigher = right.streams >= left.streams;
+    const left     = shuffled[leftIdx];
+    const right    = shuffled[rightIdx];
+    const leftVal  = itemMetric(left);
+    const rightVal = itemMetric(right);
+    const isHigher  = rightVal >= leftVal;
     const isCorrect = (dir === 'higher' && isHigher) || (dir === 'lower' && !isHigher);
 
     // Reveal
-    document.getElementById('rightQuestion').style.display = 'none';
+    document.getElementById('rightQuestion').style.display    = 'none';
     document.getElementById('rightStreamsWrap').style.display = 'flex';
-    document.getElementById('rightStreams').textContent = fmtStreams(right.streams);
+    document.getElementById('rightStreams').textContent       = fmtStreams(rightVal);
+    document.getElementById('rightStreamsLabel').textContent  = metricLabel();
 
     const cardRight = document.getElementById('cardRight');
     if (isCorrect) {
       cardRight.className = 'card right reveal-correct';
       score++; streak++;
       if (streak > bestStreak) bestStreak = streak;
-      // Check new all-time best mid-game
       if (score > allTimeBest) {
         allTimeBest = score;
-        saveBest(allTimeBest);
+        if (currentMode === 'spotify') saveBest(allTimeBest);
+        else saveBestYT(allTimeBest);
         flashNewBest();
       }
     } else {
@@ -966,7 +1167,7 @@
       streak = 0;
     }
     updateHUD();
-    showToast(isCorrect, right);
+    showToast(isCorrect, right, rightVal, leftVal);
 
     setTimeout(() => {
       hideToast();
@@ -984,21 +1185,22 @@
   }
 
   // ---- TOAST ----
-  function showToast(correct, right) {
+  function showToast(correct, right, rightVal, leftVal) {
     const toast = document.getElementById('resultToast');
     toast.className = 'result-toast show ' + (correct ? 'correct' : 'wrong');
-    document.getElementById('toastIcon').textContent = correct ? '✓' : '✗';
+    document.getElementById('toastIcon').textContent  = correct ? '✓' : '✗';
     document.getElementById('toastTitle').textContent = correct ? 'CORRECT!' : 'WRONG!';
-    const diff = Math.abs(shuffled[rightIdx].streams - shuffled[leftIdx].streams);
+    const diff  = Math.abs(rightVal - leftVal);
+    const label = currentMode === 'spotify' ? 'streams' : 'views';
     document.getElementById('toastDesc').textContent =
-      '"' + right.title + '" — ' + fmtStreams(right.streams) + ' streams' +
+      '"' + right.title + '" — ' + fmtStreams(rightVal) + ' ' + label +
       (correct ? '  ·  ' + fmtStreams(diff) + ' apart' : '');
   }
   function hideToast() {
     document.getElementById('resultToast').className = 'result-toast';
   }
 
-  // ---- NEW BEST MID-GAME FLASH ----
+  // ---- NEW BEST FLASH ----
   let newBestTimer = null;
   function flashNewBest() {
     const el = document.getElementById('newBestBadge');
@@ -1009,15 +1211,18 @@
 
   // ---- GAME OVER ----
   function showGameOver(win = false) {
-    // Final best update
-    if (score > allTimeBest) { allTimeBest = score; saveBest(allTimeBest); }
+    if (score > allTimeBest) {
+      allTimeBest = score;
+      if (currentMode === 'spotify') saveBest(allTimeBest);
+      else saveBestYT(allTimeBest);
+    }
     const isNewBest = (score > 0 && score >= allTimeBest && allTimeBest === score);
 
-    document.getElementById('goHeader').textContent = win ? 'YOU WIN!' : 'GAME OVER';
-    document.getElementById('goHeader').className = 'go-header' + (win ? ' win' : '');
+    document.getElementById('goHeader').textContent   = win ? 'YOU WIN!' : 'GAME OVER';
+    document.getElementById('goHeader').className     = 'go-header' + (win ? ' win' : '');
     document.getElementById('finalScore').textContent = score;
-    document.getElementById('goStreak').textContent = bestStreak;
-    document.getElementById('goAllTime').textContent = allTimeBest;
+    document.getElementById('goStreak').textContent   = bestStreak;
+    document.getElementById('goAllTime').textContent  = allTimeBest;
     document.getElementById('bestDisplay').textContent = allTimeBest;
 
     const newBestEl = document.getElementById('goNewBest');
@@ -1029,7 +1234,7 @@
     }
 
     let rank = '';
-    if (score >= 50)     rank = '🏆 <strong>Architects Legend</strong>';
+    if (score >= 50)      rank = '🏆 <strong>Architects Legend</strong>';
     else if (score >= 30) rank = '🎸 <strong>Metalcore Master</strong>';
     else if (score >= 20) rank = '🔥 <strong>Holy Hell Devotee</strong>';
     else if (score >= 12) rank = '⚡ <strong>Lost But Trying</strong>';
@@ -1049,12 +1254,12 @@
   // ---- CONFETTI ----
   let confettiAnim = null;
   const canvas = document.getElementById('confetti-canvas');
-  const ctx = canvas.getContext('2d');
+  const ctx    = canvas.getContext('2d');
   let particles = [];
 
   function launchConfetti() {
     canvas.style.display = 'block';
-    canvas.width = window.innerWidth;
+    canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
     particles = [];
     const colors = ['#c8102e','#1ed760','#f5a623','#4a90d9','#fff','#06d6a0'];
@@ -1062,36 +1267,27 @@
       particles.push({
         x: Math.random() * canvas.width,
         y: -10 - Math.random() * 100,
-        w: 6 + Math.random() * 8,
-        h: 3 + Math.random() * 5,
+        w: 6 + Math.random() * 8, h: 3 + Math.random() * 5,
         color: colors[Math.floor(Math.random() * colors.length)],
         rot: Math.random() * Math.PI * 2,
-        vx: (Math.random() - 0.5) * 3,
-        vy: 2 + Math.random() * 4,
-        vrot: (Math.random() - 0.5) * 0.2,
-        life: 1,
+        vx: (Math.random() - 0.5) * 3, vy: 2 + Math.random() * 4,
+        vrot: (Math.random() - 0.5) * 0.2, life: 1,
       });
     }
     function frame() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       particles.forEach(p => {
-        p.x += p.vx; p.y += p.vy; p.rot += p.vrot;
-        p.vy += 0.05;
+        p.x += p.vx; p.y += p.vy; p.rot += p.vrot; p.vy += 0.05;
         if (p.y > canvas.height) { p.life -= 0.05; }
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rot);
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
         ctx.globalAlpha = Math.max(0, p.life);
-        ctx.fillStyle = p.color;
+        ctx.fillStyle   = p.color;
         ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
         ctx.restore();
       });
       particles = particles.filter(p => p.life > 0);
-      if (particles.length > 0) {
-        confettiAnim = requestAnimationFrame(frame);
-      } else {
-        canvas.style.display = 'none';
-      }
+      if (particles.length > 0) { confettiAnim = requestAnimationFrame(frame); }
+      else { canvas.style.display = 'none'; }
     }
     confettiAnim = requestAnimationFrame(frame);
   }
